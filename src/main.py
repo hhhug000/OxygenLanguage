@@ -1,11 +1,12 @@
 import argparse
+import shlex
 import runner
 
 class OxygenRunner:
     def run(self, code: str):
         lines = code.splitlines()
         for i, line in enumerate(lines):
-            lines[i] = line.strip().split(" ")
+            lines[i] = shlex.split(line.strip())
         for line in lines:
             runner.runLine(line, lines)
 
@@ -16,7 +17,7 @@ class OxygenRunner:
             line = input(">>> ")
             if line.strip() == "EXIT":
                 break
-            lines.append(line.strip().split(" "))
+            lines.append(shlex.split(line.strip()))
             runner.runLine(lines[-1], lines)
 
         
