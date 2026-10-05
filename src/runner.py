@@ -41,3 +41,23 @@ def parseValue(token: str):
         pass
 
     return token
+
+def getArgsFromBrackets(line: list):
+    if len(line) < 3 or line[1] == "(" and line[-1] == ")":
+        innerTokens = line[2:-1]
+        args = []
+        currentArg = []
+
+        for token in innerTokens:
+            if token == ",":
+                if currentArg:
+                    args.append(parseValue(" ".join(currentArg)))
+                    currentArg = []
+            else:
+                currentArg.append(token)
+
+        if currentArg:
+            args.append(parseValue(" ".join(currentArg)))
+
+        return args
+    return []
