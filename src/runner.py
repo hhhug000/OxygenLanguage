@@ -2,7 +2,8 @@ def runLine(line, context, index):
     cmd = line[0]
 
     if cmd == "print":
-        print(" ".join(line[1:]))
+        args = getArgsFromBrackets(line)
+        print(args)
         return 1
     elif cmd == "def":
         print(f"Defining function: {line[1]}")
