@@ -18,3 +18,26 @@ def runLine(line, context, index):
     else:
         print(f"Eval {line}")
         return 1
+
+def parseValue(token: str):
+    token = token.strip()
+
+    if (token.startswith('"') and token.endswith('"')) or (token.startswith("'") and token.endswith("'")):
+        return token[1:-1]
+
+    if token == "true":
+        return True
+    if token == "false":
+        return False
+    if token in ("null", "nil"):
+        return None
+
+    try:
+        if "." in token:
+            return float(token)
+        else:
+            return int(token)
+    except ValueError:
+        pass
+
+    return token
