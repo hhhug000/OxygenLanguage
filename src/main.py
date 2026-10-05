@@ -1,4 +1,5 @@
 import argparse
+import runner
 
 class OxygenRunner:
     def run(self, code: str):
@@ -6,7 +7,7 @@ class OxygenRunner:
         for i, line in enumerate(lines):
             lines[i] = line.strip().split(" ")
         for line in lines:
-            print(f"Executing line: {line}")
+            runner.runLine(line, lines)
 
     def repl(self):
         lines = []
@@ -16,7 +17,7 @@ class OxygenRunner:
             if line.strip() == "EXIT":
                 break
             lines.append(line.strip().split(" "))
-            print(f"Executing line: {lines[-1]}")
+            runner.runLine(lines[-1], lines)
 
         
 
@@ -27,8 +28,8 @@ if __name__ == "__main__":
     if args.file:
         with open(args.file, "r") as f:
                 code = f.read()
-                runner = OxygenRunner()
-                runner.run(code)
+                oxyrunner = OxygenRunner()
+                oxyrunner.run(code)
     else:
-        runner = OxygenRunner()
-        runner.repl()
+        oxyrunner = OxygenRunner()
+        oxyrunner.repl()
