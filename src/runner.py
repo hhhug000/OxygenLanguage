@@ -54,29 +54,64 @@ def runLine(line, context, index, env):
         }
 
         return (endIndex - index) + 1
+
     elif cmd == "if":
+        branches = []
+        
         try:
             thenIndex = line.index("then")
-            condTokens = line[1:thenIndex]
+            currentCond = line[1:thenIndex]
         except ValueError:
-            condTokens = line[1:]
-
-        conditionMet = bool(evaluateExpression(condTokens, env))
-
-        endIndex = index
+            currentCond = line[1:]
+            
+        branchStart = index + 1
+        
+        i = index + 1
         depth = 1
-        while endIndex < len(context):
-            endIndex += 1
-            if context[endIndex]:
-                if context[endIndex][0] in ("if", "while", "def"):
+        while i < len(context):
+            curr = context[i]
+            if curr:
+                c = curr[0]
+                if c in ("if", "while", "def"):
                     depth += 1
-                elif context[endIndex][0] == "end":
-                    depth -= 1
-                    if depth == 0:
+                elif c == "end":
+                    if depth == 1:
+                        branches.append({
+                            "cond": currentCond,
+                            "start": branchStart,
+                            "end": i
+                        })
                         break
-        if conditionMet:
-            executeBlock(context, index + 1, endIndex, env)
-        return (endIndex - index) + 1
+                    else:
+                        depth -= 1
+                elif depth == 1 and c in ("elif", "else"):
+                    branches.append({
+                        "cond": currentCond,
+                        "start": branchStart,
+                        "end": i
+                    })
+                    if c == "elif":
+                        try:
+                            thenIdx = curr.index("then")
+                            currentCond = curr[1:thenIdx]
+                        except ValueError:
+                            currentCond = curr[1:]
+                    else:
+                        currentCond = None
+                    branchStart = i + 1
+            i += 1
+
+        for b in branches:
+            cond = b["cond"]
+            if cond is None:
+                executeBlock(context, b["start"], b["end"], env)
+                break
+            else:
+                if bool(evaluateExpression(cond, env)):
+                    executeBlock(context, b["start"], b["end"], env)
+                    break
+
+        return (i - index) + 1
     
     elif cmd == "while":
         try:
