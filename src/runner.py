@@ -17,12 +17,39 @@ def runLine(line, context, index, env):
         print(*args)
         return 1
     elif cmd == "def":
+        funcName = line[1]
+
+        argTokens = []
+        try:
+            openBracket = line.index("(")
+            closeBracket = line.index(")")
+            argTokens = line[openBracket + 1:closeBracket]
+        except ValueError:
+            pass
+
+        argNames = [token for token in argTokens if token != ","]
+
         endIndex = index
-        while endIndex < len(context):
-            if context[endIndex][0] == "end" and context[endIndex]:
-                break
+        depth = 1
+        while endIndex < len(context) - 1:
             endIndex += 1
-        return (endIndex-index) + 1
+            if context[endIndex]:
+                if context[endIndex][0] in ("if", "while", "def"):
+                    depth += 1
+                elif context[endIndex][0] == "end":
+                    depth -= 1
+                    if depth == 0:
+                        break
+
+        env[funcName] = {
+            "type": "function",
+            "args": argNames,
+            "startIndex": index + 1,
+            "endIndex": endIndex,
+            "context": context
+        }
+
+        return (endIndex - index) + 1
     elif cmd == "if":
         try:
             thenIndex = line.index("then")
@@ -73,6 +100,7 @@ def runLine(line, context, index, env):
     elif cmd == "end":
         return 1
     else:
+        evaluateExpression(line, env)
         return 1
 
 def parseValue(token: str, env: dict = None):
@@ -122,6 +150,47 @@ def getArgsFromBrackets(line: list, env: dict):
     return []
 
 def evaluateExpression(tokens: list, env: dict):
+    if len(tokens) >= 3 and tokens[0] in env and isinstance(env[tokens[0]], dict) and env[tokens[0]]["type"] == "function":
+        funcName = tokens[0]
+        funcDef = env[funcName]
+        
+        callArgs = []
+        try:
+            openB = tokens.index("(")
+            closeB = tokens.index(")")
+            inner = tokens[openB + 1:closeB]
+            current = []
+            for t in inner:
+                if t == ",":
+                    if current:
+                        callArgs.append(evaluateExpression(current, env))
+                        current = []
+                else:
+                    current.append(t)
+            if current:
+                callArgs.append(evaluateExpression(current, env))
+        except ValueError:
+            pass
+            
+        localEnv = env.copy()
+        for paramName, argVal in zip(funcDef["args"], callArgs):
+            localEnv[paramName] = argVal
+            
+        result = None
+        i = funcDef["startIndex"]
+        while i < funcDef["endIndex"]:
+            currLine = funcDef["context"][i]
+            if currLine:
+                if currLine[0] == "return":
+                    retTokens = currLine[1:]
+                    result = evaluateExpression(retTokens, localEnv)
+                    break
+                res = runLine(currLine, funcDef["context"], i, localEnv)
+                i += res if res is not None else 1
+            else:
+                i += 1
+        return result
+    
     exprParts = []
     operators = {"+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=", "and", "or", "not", "(", ")"}
     for token in tokens:

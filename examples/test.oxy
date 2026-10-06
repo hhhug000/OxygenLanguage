@@ -21,4 +21,10 @@ while counter < 3 do
     counter = counter + 1
 end
 
+def sayhi(name)
+    print("Hello", name)
+end
+
+sayhi("Oxygen")
+
 print("=== All Tests Completed Successfully! ===")
