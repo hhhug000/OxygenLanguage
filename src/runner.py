@@ -19,6 +19,25 @@ def runLine(line, context, index, env):
 
     line = removeComments(line)
 
+    if "=" in line:
+        equalsIdx = line.index("=")
+        leftSide = line[:equalsIdx]
+        if len(leftSide) >= 4 and leftSide[1] == "[" and leftSide[-1] == "]":
+            varName = leftSide[0]
+            indexTokens = leftSide[2:-1]
+            idx = int(evaluateExpression(indexTokens, env))
+            rhsTokens = line[equalsIdx + 1:]
+            val = evaluateExpression(rhsTokens, env)
+            if varName in env:
+                current_val = env[varName]
+                if isinstance(current_val, str):
+                    char_list = list(current_val)
+                    char_list[idx] = str(val)
+                    env[varName] = "".join(char_list)
+                elif isinstance(current_val, list):
+                    current_val[idx] = val
+            return 1
+
     if len(line) >= 3 and line[1] == "=":
         varName = line[0]
         rhsTokens = line[2:]
