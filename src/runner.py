@@ -1,4 +1,7 @@
 def runLine(line, context, index, env):
+    if not line:
+        return 1
+    
     cmd = line[0]
 
     if len(line) >= 3 and line[1] == "=":

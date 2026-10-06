@@ -5,6 +5,7 @@ result = x + y * 2
 print("x is", x)
 print("y is", y)
 print("10 + 5 * 2 equals:", result)
+
 print("=== Test 2: If Conditional ===")
 if result == 20 then
     print("Success! The conditional evaluated to true.")
@@ -12,10 +13,12 @@ end
 if x > 50 then
     print("Failure: This should not print.")
 end
+
 print("=== Test 3: While Loop ===")
 counter = 0
 while counter < 3 do
     print("Loop iteration:", counter)
     counter = counter + 1
 end
+
 print("=== All Tests Completed Successfully! ===")
