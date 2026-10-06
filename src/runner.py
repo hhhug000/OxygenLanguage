@@ -5,7 +5,6 @@ def runLine(line, context, index, env):
         varName = line[0]
         rhsTokens = line[2:]
         env[varName] = evaluateExpression(rhsTokens, env)
-        print(f"Assigned {varName} = {env[varName]}")
         return 1
 
     if cmd == "print":
@@ -13,13 +12,11 @@ def runLine(line, context, index, env):
         print(*args)
         return 1
     elif cmd == "def":
-        print(f"Defining function: {line[1]}")
         endIndex = index
         while endIndex < len(context):
             if context[endIndex][0] == "end" and context[endIndex]:
                 break
             endIndex += 1
-        print(f"New function from lines {index} to {endIndex}")
         return (endIndex-index) + 1
     elif cmd == "if":
         try:
@@ -45,10 +42,32 @@ def runLine(line, context, index, env):
             executeBlock(context, index + 1, endIndex, env)
         return (endIndex - index) + 1
     
+    elif cmd == "while":
+        try:
+            doIndex = line.index("do")
+            condTokens = line[1:doIndex]
+        except ValueError:
+            condTokens = line[1:]
+            
+        endIndex = index
+        depth = 1
+        while endIndex < len(context) - 1:
+            endIndex += 1
+            if context[endIndex]:
+                if context[endIndex][0] in ("if", "while", "def"):
+                    depth += 1
+                elif context[endIndex][0] == "end":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                        
+        while bool(evaluateExpression(condTokens, env)):
+            executeBlock(context, index + 1, endIndex, env)
+        return (endIndex - index) + 1
+    
     elif cmd == "end":
         return 1
     else:
-        print(f"Eval {line}")
         return 1
 
 def parseValue(token: str, env: dict = None):
