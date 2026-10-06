@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oxygen Playground</title>
+    <!-- Pyodide CDN -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    <style>
+        /* Strict functional positioning, layout, and sizing CSS with bare minimum dividers */
+        html, body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        /* Top Bar Container with bottom border divider */
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            height: 40px;
+            box-sizing: border-box;
+            padding: 0 10px;
+            border-bottom: 1px solid #333333;
+            background: #2d2d2d;
+        }
+
+        /* Controls section on the right side of top bar */
+        #top-bar-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        button {
+            background: #333333;
+            color: #cccccc;
+            border: 1px solid #555555;
+            padding: 4px 12px;
+            font-family: sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        button:hover:not(:disabled) {
+            background: #3f3f46;
+            color: #ffffff;
+            border-color: #007acc;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* GitHub Icon styling for minimal size/positioning */
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #cccccc;
+        }
+
+        .github-link:hover {
+            color: #ffffff;
+        }
+
+        .github-icon {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        /* Main Workspace split below top bar */
+        #main-container {
+            display: flex;
+            width: 100%;
+            height: calc(100vh - 40px);
+        }
+
+        /* Left container for Monaco Editor with right border divider */
+        #editor-container {
+            width: 50%;
+            height: 100%;
+            border-right: 1px solid #333333;
+            box-sizing: border-box;
+        }
+
+        /* Right terminal container */
+        #blank-container {
+            width: 50%;
+            height: 100%;
+            box-sizing: border-box;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <span>Oxygen Playground</span>
+        <div id="top-bar-controls">
+            <a href="https://github.com/hhhug000/OxygenLanguage" target="_blank" rel="noopener noreferrer" class="github-link" title="GitHub Repository">
+                <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+            </a>
+            <button id="run-btn" disabled>Loading Pyodide...</button>
+        </div>
+    </div>
+
+    <div id="main-container">
+        <!-- Left Pane: Monaco Editor -->
+        <div id="editor-container"></div>
+        <!-- Right Pane: Terminal Output -->
+        <div id="blank-container">Initializing Python environment...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+
+    <script>
+        let pyodide = null;
+        let editor = null;
+        const terminal = document.getElementById("blank-container");
+        const runBtn = document.getElementById("run-btn");
+
+        function logToTerminal(text, isError = false) {
+            terminal.style.color = isError ? "#f48771" : "#d4d4d4";
+            terminal.textContent += text + "\n";
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Configure RequireJS paths to load Monaco Editor from CDN
+        require.config({
+            paths: {
+                'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs'
+            }
+        });
+
+        // Initialize Monaco Editor instance once modules are loaded
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: 'name = "Hugo"\nprint("Hello, what is your name?")\nname[2] = "a"\nprint("Modified name:", name)',
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false }
+            });
+        });
+
+        async function initPyodide() {
+            try {
+                logToTerminal("Loading Pyodide WASM runtime...");
+                pyodide = await loadPyodide();
+
+                logToTerminal("Fetching src/main.py and src/runner.py via HTTP...");
+                const [mainRes, runnerRes] = await Promise.all([
+                    fetch("src/main.py"),
+                    fetch("src/runner.py")
+                ]);
+
+                if (!mainRes.ok || !runnerRes.ok) {
+                    throw new Error("Failed to fetch src/main.py or src/runner.py from relative path.");
+                }
+
+                const mainCode = await mainRes.text();
+                const runnerCode = await runnerRes.text();
+
+                pyodide.FS.mkdir("/src");
+                pyodide.FS.writeFile("/src/main.py", mainCode);
+                pyodide.FS.writeFile("/src/runner.py", runnerCode);
+
+                // Expose JS functions to Python for stdio and input redirection
+                pyodide.globals.set("js_print", (msg) => {
+                    logToTerminal(msg);
+                });
+
+                pyodide.globals.set("js_input", (promptText) => {
+                    return prompt(promptText || "") || "";
+                });
+
+                await pyodide.runPythonAsync(`
+                    import sys
+                    from js import js_print, js_input
+
+                    class TerminalStdout:
+                        def write(self, text):
+                            if text and text != '\\n':
+                                js_print(text)
+                        def flush(self):
+                            pass
+
+                    sys.stdout = TerminalStdout()
+                    sys.stderr = TerminalStdout()
+                `);
+
+                runBtn.disabled = false;
+                runBtn.textContent = "Run";
+                logToTerminal("Ready. Click 'Run' to execute.");
+
+            } catch (err) {
+                logToTerminal("Initialization Error: " + err.message, true);
+            }
+        }
+
+        // Run button click event handler to execute code via runner.py
+        runBtn.addEventListener("click", async function () {
+            if (!pyodide || !editor) return;
+            terminal.textContent = "";
+            const userCode = editor.getValue();
+
+            try {
+                await pyodide.runPythonAsync(`
+                    import sys
+                    sys.path.insert(0, '/src')
+                    import runner
+
+                    code = ${JSON.stringify(userCode)}
+                    env = {"__dir__": "/src"}
+                    lines = [runner.removeComments(runner.tokeniseLine(l.strip())) for l in code.splitlines()]
+                    
+                    i = 0
+                    while i < len(lines):
+                        l = lines[i]
+                        if l:
+                            res = runner.runLine(l, lines, i, env)
+                            i += res if res is not None else 1
+                        else:
+                            i += 1
+                `);
+            } catch (err) {
+                logToTerminal("Execution Error: " + err.message, true);
+            }
+        });
+
+        window.onload = initPyodide;
+    </script>
+</body>
+</html>
