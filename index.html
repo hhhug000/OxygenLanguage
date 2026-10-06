@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oxygen Playground</title>
-    <!-- Pyodide CDN -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <style>
         /* Strict functional positioning, layout, and sizing CSS with bare minimum dividers */
         html, body {
@@ -97,7 +95,7 @@
             box-sizing: border-box;
         }
 
-        /* Right terminal container */
+        /* Right blank container / terminal output */
         #blank-container {
             width: 50%;
             height: 100%;
@@ -134,6 +132,8 @@
         <div id="blank-container">Initializing Python environment...</div>
     </div>
 
+    <!-- Pyodide WASM Runtime -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
 
     <script>
@@ -144,7 +144,7 @@
 
         function logToTerminal(text, isError = false) {
             terminal.style.color = isError ? "#f48771" : "#d4d4d4";
-            terminal.textContent += text + "\n";
+            terminal.textContent += text;
             terminal.scrollTop = terminal.scrollHeight;
         }
 
@@ -168,10 +168,10 @@
 
         async function initPyodide() {
             try {
-                logToTerminal("Loading Pyodide WASM runtime...");
+                logToTerminal("Loading Pyodide WASM runtime...\n");
                 pyodide = await loadPyodide();
 
-                logToTerminal("Fetching src/main.py and src/runner.py via HTTP...");
+                logToTerminal("Fetching src/main.py and src/runner.py via HTTP...\n");
                 const [mainRes, runnerRes] = await Promise.all([
                     fetch("src/main.py"),
                     fetch("src/runner.py")
@@ -188,7 +188,6 @@
                 pyodide.FS.writeFile("/src/main.py", mainCode);
                 pyodide.FS.writeFile("/src/runner.py", runnerCode);
 
-                // Expose JS functions globally for Pyodide access
                 window.js_print = (msg) => {
                     logToTerminal(msg);
                 };
@@ -203,7 +202,7 @@
 
                     class TerminalStdout:
                         def write(self, text):
-                            if text and text != '\\n':
+                            if text:
                                 js.js_print(text)
                         def flush(self):
                             pass
@@ -214,10 +213,11 @@
 
                 runBtn.disabled = false;
                 runBtn.textContent = "Run";
-                logToTerminal("Ready. Click 'Run' to execute.");
+                terminal.textContent = "";
+                logToTerminal("Ready. Click 'Run' to execute.\n");
 
             } catch (err) {
-                logToTerminal("Initialization Error: " + err.message, true);
+                logToTerminal("Initialization Error: " + err.message + "\n", true);
             }
         }
 
@@ -247,7 +247,7 @@
                             i += 1
                 `);
             } catch (err) {
-                logToTerminal("Execution Error: " + err.message, true);
+                logToTerminal("Execution Error: " + err.message + "\n", true);
             }
         });
 
