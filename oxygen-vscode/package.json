@@ -1,0 +1,35 @@
+{
+    "name": "oxygen-language",
+    "displayName": "Oxygen Language Support",
+    "description": "Syntax highlighting and snippets for the Oxygen programming language.",
+    "version": "1.0.0",
+    "publisher": "Hugo H",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "oxy",
+                "aliases": [
+                    "Oxygen",
+                    "oxy"
+                ],
+                "extensions": [
+                    ".oxy"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "oxy",
+                "scopeName": "source.oxy",
+                "path": "./syntaxes/oxygen.tmLanguage.json"
+            }
+        ]
+    }
+}
