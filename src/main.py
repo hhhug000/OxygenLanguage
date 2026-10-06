@@ -4,18 +4,19 @@ import runner
 
 class OxygenRunner:
     def tokeniseLine(self, line: str):
-        pattern = r'''("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|[(),\[\]{}]|[^\s(),\[\]{}]+)'''
+        pattern = r'''("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|==|!=|<=|>=|[(),\[\]{}+*\/\-%<>=]|[^\s(),\[\]{}+*\/\-%<>=]+)'''
         return [t for t in re.findall(pattern, line) if t.strip()]
     
     def run(self, code: str):
         lines = code.splitlines()
         for i, line in enumerate(lines):
             lines[i] = self.tokeniseLine(line.strip())
-        
+
+        env = {}
         i = 0
         while i < len(lines):
             line = lines[i]
-            result = runner.runLine(line, lines, i)
+            result = runner.runLine(line, lines, i, env)
             if result is not None:
                 i += result
             else:
@@ -25,6 +26,7 @@ class OxygenRunner:
         lines = []
         buffer = []
         blockDepth = 0
+        env = {}
         print("Oxygen REPL, Type EXIT to quit")
         while True:
             if blockDepth > 0:
@@ -53,7 +55,7 @@ class OxygenRunner:
                 i = 0
                 while i < len(buffer):
                     line = buffer[i]
-                    result = runner.runLine(buffer[i], buffer, i)
+                    result = runner.runLine(buffer[i], buffer, i, env)
                     if result is not None:
                         i += result
                     else:

@@ -1,8 +1,15 @@
-def runLine(line, context, index):
+def runLine(line, context, index, env):
     cmd = line[0]
 
+    if len(line) >= 3 and line[1] == "=":
+        varName = line[0]
+        rhsTokens = line[2:]
+        env[varName] = evaluateExpression(rhsTokens, env)
+        print(f"Assigned {varName} = {env[varName]}")
+        return 1
+
     if cmd == "print":
-        args = getArgsFromBrackets(line)
+        args = getArgsFromBrackets(line, env)
         print(*args)
         return 1
     elif cmd == "def":
@@ -14,13 +21,37 @@ def runLine(line, context, index):
             endIndex += 1
         print(f"New function from lines {index} to {endIndex}")
         return (endIndex-index) + 1
+    elif cmd == "if":
+        try:
+            thenIndex = line.index("then")
+            condTokens = line[1:thenIndex]
+        except ValueError:
+            condTokens = line[1:]
+
+        conditionMet = bool(evaluateExpression(condTokens, env))
+
+        endIndex = index
+        depth = 1
+        while endIndex < len(context):
+            endIndex += 1
+            if context[endIndex]:
+                if context[endIndex][0] in ("if", "while", "def"):
+                    depth += 1
+                elif context[endIndex][0] == "end":
+                    depth -= 1
+                    if depth == 0:
+                        break
+        if conditionMet:
+            executeBlock(context, index + 1, endIndex, env)
+        return (endIndex - index) + 1
+    
     elif cmd == "end":
         return 1
     else:
         print(f"Eval {line}")
         return 1
 
-def parseValue(token: str):
+def parseValue(token: str, env: dict = None):
     token = token.strip()
 
     if (token.startswith('"') and token.endswith('"')) or (token.startswith("'") and token.endswith("'")):
@@ -41,9 +72,12 @@ def parseValue(token: str):
     except ValueError:
         pass
 
+    if env is not None and token in env:
+        return env[token]
+
     return token
 
-def getArgsFromBrackets(line: list):
+def getArgsFromBrackets(line: list, env: dict):
     if len(line) >= 3 and line[1] == "(" and line[-1] == ")":
         innerTokens = line[2:-1]
         args = []
@@ -52,13 +86,47 @@ def getArgsFromBrackets(line: list):
         for token in innerTokens:
             if token == ",":
                 if currentArg:
-                    args.append(parseValue(" ".join(currentArg)))
+                    args.append(evaluateExpression(currentArg, env))
                     currentArg = []
             else:
                 currentArg.append(token)
 
         if currentArg:
-            args.append(parseValue(" ".join(currentArg)))
+            args.append(evaluateExpression(currentArg, env))
 
         return args
     return []
+
+def evaluateExpression(tokens: list, env: dict):
+    exprParts = []
+    operators = {"+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=", "and", "or", "not", "(", ")"}
+    for token in tokens:
+        if token in env:
+            exprParts.append(repr(env[token]))
+        elif token in operators:
+            exprParts.append(token)
+        else:
+            val = parseValue(token, env)
+            if isinstance(val, str):
+                exprParts.append(repr(val))
+            else:
+                exprParts.append(str(val))
+    
+    exprStr = " ".join(exprParts)
+    try:
+        return eval(exprStr)
+    except Exception:
+        return exprStr
+
+def executeBlock(context: list, startIndex: int, endIndex: int, env: dict):
+    i = startIndex
+    while i < endIndex:
+        line = context[i]
+        if line:
+            result = runLine(line, context, i, env)
+            if result is not None:
+                i += result
+            else:
+                i += 1
+        else:
+            i += 1
