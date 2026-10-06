@@ -2,6 +2,12 @@ class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
 
+class BreakException(Exception):
+    pass
+
+class ContinueException(Exception):
+    pass
+
 def runLine(line, context, index, env):
     if not line:
         return 1
@@ -114,26 +120,77 @@ def runLine(line, context, index, env):
         return (i - index) + 1
     
     elif cmd == "while":
-        try:
-            doIndex = line.index("do")
-            condTokens = line[1:doIndex]
-        except ValueError:
-            condTokens = line[1:]
-            
+        condTokens = line[1 : line.index("do")] if "do" in line else line[1:]
+        
         endIndex = index
         depth = 1
         while endIndex < len(context) - 1:
             endIndex += 1
             if context[endIndex]:
-                if context[endIndex][0] in ("if", "while", "def"):
+                if context[endIndex][0] in ("if", "while", "for", "def"):
                     depth += 1
                 elif context[endIndex][0] == "end":
                     depth -= 1
                     if depth == 0:
                         break
-                        
+
         while bool(evaluateExpression(condTokens, env)):
-            executeBlock(context, index + 1, endIndex, env)
+            i = index + 1
+            try:
+                while i < endIndex:
+                    currLine = context[i]
+                    if currLine:
+                        res = runLine(currLine, context, i, env)
+                        i += res if res is not None else 1
+                    else:
+                        i += 1
+            except ContinueException:
+                continue
+            except BreakException:
+                break
+
+        return (endIndex - index) + 1
+    elif cmd == "for":
+        varName = line[1]
+        equalsIdx = line.index("=")
+        toIdx = line.index("to")
+        doIdx = line.index("do")
+        
+        startVal = int(evaluateExpression(line[equalsIdx + 1:toIdx], env))
+        endVal = int(evaluateExpression(line[toIdx + 1:doIdx], env))
+        
+        endIndex = index
+        depth = 1
+        while endIndex < len(context) - 1:
+            endIndex += 1
+            if context[endIndex]:
+                if context[endIndex][0] in ("if", "while", "for", "def"):
+                    depth += 1
+                elif context[endIndex][0] == "end":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                      
+        currentVal = startVal
+        while currentVal <= endVal:
+            env[varName] = currentVal
+            
+            i = index + 1
+            try:
+                while i < endIndex:
+                    currLine = context[i]
+                    if currLine:
+                        res = runLine(currLine, context, i, env)
+                        i += res if res is not None else 1
+                    else:
+                        i += 1
+            except ContinueException:
+                pass
+            except BreakException:
+                break
+                
+            currentVal += 1
+            
         return (endIndex - index) + 1
     
     elif cmd == "end":
@@ -142,6 +199,10 @@ def runLine(line, context, index, env):
         retTokens = line[1:]
         val = evaluateExpression(retTokens, env)
         raise ReturnException(val)
+    elif cmd == "break":
+        raise BreakException()
+    elif cmd == "continue":
+        raise ContinueException()
     else:
         evaluateExpression(line, env)
         return 1
@@ -193,27 +254,32 @@ def getArgsFromBrackets(line: list, env: dict):
     return []
 
 def evaluateExpression(tokens: list, env: dict):
+    if len(tokens) >= 3 and tokens[0] in ("input", "len", "type", "int", "str", "float"):
+        funcName = tokens[0]
+        args = parseCallArgs(tokens, env)
+        
+        if funcName == "input":
+            prompt = args[0] if args else ""
+            return input(prompt)
+        elif funcName == "len":
+            return len(args[0]) if args else 0
+        elif funcName == "type":
+            val = args[0] if args else None
+            t = type(val).__name__
+            # Map Python types to clean language names if desired
+            return {"str": "string", "int": "integer", "float": "float", "bool": "boolean"}.get(t, t)
+        elif funcName == "int":
+            return int(args[0]) if args else 0
+        elif funcName == "str":
+            return str(args[0]) if args else ""
+        elif funcName == "float":
+            return float(args[0]) if args else 0.0
+
     if len(tokens) >= 3 and tokens[0] in env and isinstance(env[tokens[0]], dict) and env[tokens[0]]["type"] == "function":
         funcName = tokens[0]
         funcDef = env[funcName]
         
-        callArgs = []
-        try:
-            openB = tokens.index("(")
-            closeB = tokens.index(")")
-            inner = tokens[openB + 1:closeB]
-            current = []
-            for t in inner:
-                if t == ",":
-                    if current:
-                        callArgs.append(evaluateExpression(current, env))
-                        current = []
-                else:
-                    current.append(t)
-            if current:
-                callArgs.append(evaluateExpression(current, env))
-        except ValueError:
-            pass
+        callArgs = parseCallArgs(tokens, env)
             
         localEnv = env.copy()
         for paramName, argVal in zip(funcDef["args"], callArgs):
@@ -269,3 +335,23 @@ def removeComments(tokens):
             return tokens[:index] + [cleanedToken]
             
     return tokens
+
+def parseCallArgs(tokens: list, env: dict):
+    callArgs = []
+    try:
+        open_b = tokens.index("(")
+        close_b = tokens.index(")")
+        inner = tokens[open_b + 1:close_b]
+        current = []
+        for t in inner:
+            if t == ",":
+                if current:
+                    callArgs.append(evaluateExpression(current, env))
+                    current = []
+            else:
+                current.append(t)
+        if current:
+            callArgs.append(evaluateExpression(current, env))
+    except ValueError:
+        pass
+    return callArgs
