@@ -1,18 +1,14 @@
 import argparse
+import os
 import re
 import runner
 
 class OxygenRunner:
-    def tokeniseLine(self, line: str):
-        pattern = r'''("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|==|!=|<=|>=|[(),\[\]{}+*\/\-%<>=]|[^\s(),\[\]{}+*\/\-%<>=]+)'''
-        return [t for t in re.findall(pattern, line) if t.strip()]
-    
-    def run(self, code: str):
+    def run(self, code: str, env: dict = {}):
         lines = code.splitlines()
         for i, line in enumerate(lines):
-            lines[i] = self.tokeniseLine(line.strip())
+            lines[i] = runner.tokeniseLine(line.strip())
 
-        env = {}
         i = 0
         while i < len(lines):
             line = lines[i]
@@ -41,7 +37,7 @@ class OxygenRunner:
             if not stripped:
                 continue
 
-            tokens = self.tokeniseLine(stripped)
+            tokens = runner.tokeniseLine(stripped)
             buffer.append(tokens)
 
             if tokens and tokens[0] in ("def", "if", "while", "for"):
@@ -72,8 +68,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     oxyrunner = OxygenRunner()
     if args.file:
+        scriptPath = args.file
         with open(args.file, "r") as f:
                 code = f.read()
-                oxyrunner.run(code)
+                env = {
+                    "__dir__": os.path.dirname(os.path.abspath(scriptPath))
+                }
+                oxyrunner.run(code, env = env)
     else:
         oxyrunner.repl()

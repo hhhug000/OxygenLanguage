@@ -1,0 +1,4 @@
+include("libs/reverse")
+
+name = input("Hello, what is your name? > ")
+print("Backwards your name is", reverse(name))

@@ -1,0 +1,12 @@
+def reverse(text)
+    l = len(text)
+    result = ""
+    i = l - 1
+    
+    while i >= 0 do
+        result = result + text[i]
+        i = i - 1
+    end
+    
+    return result
+end

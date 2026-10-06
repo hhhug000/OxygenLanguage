@@ -1,3 +1,6 @@
+import os
+import re
+
 class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
@@ -203,6 +206,46 @@ def runLine(line, context, index, env):
         raise BreakException()
     elif cmd == "continue":
         raise ContinueException()
+    elif cmd == "include":
+        filenames = parseCallArgs(line, env)
+        currentDir = env.get("__dir__", os.getcwd())
+        
+        for rawFilename in filenames:
+            filename = str(rawFilename).strip('"\'')
+            if not filename.endswith(".oxy"):
+                filename += ".oxy"
+                
+            fullPath = os.path.join(currentDir, filename)
+            
+            try:
+                with open(fullPath, "r") as f:
+                    fileCode = f.read()
+                
+                includedLines = [tokeniseLine(l) for l in fileCode.splitlines()]
+                
+                oldDir = env.get("__dir__")
+                env["__dir__"] = os.path.dirname(os.path.abspath(fullPath))
+                
+                i = 0
+                while i < len(includedLines):
+                    l = includedLines[i]
+                    if l:
+                        res = runLine(l, includedLines, i, env)
+                        i += res if res is not None else 1
+                    else:
+                        i += 1
+                        
+                if oldDir is not None:
+                    env["__dir__"] = oldDir
+                else:
+                    env.pop("__dir__", None)
+                    
+            except FileNotFoundError:
+                print(f"Error: Could not find include file '{fullPath}'")
+            except Exception as e:
+                print(f"Error including file '{filename}': {e}")
+                
+        return 1
     else:
         evaluateExpression(line, env)
         return 1
@@ -254,10 +297,9 @@ def getArgsFromBrackets(line: list, env: dict):
     return []
 
 def evaluateExpression(tokens: list, env: dict):
-    if len(tokens) >= 3 and tokens[0] in ("input", "len", "type", "int", "str", "float"):
+    if len(tokens) >= 3 and tokens[0] in ("input", "len", "type", "int", "str", "float", "reverse"):
         funcName = tokens[0]
         args = parseCallArgs(tokens, env)
-        
         if funcName == "input":
             prompt = args[0] if args else ""
             return input(prompt)
@@ -266,7 +308,6 @@ def evaluateExpression(tokens: list, env: dict):
         elif funcName == "type":
             val = args[0] if args else None
             t = type(val).__name__
-            # Map Python types to clean language names if desired
             return {"str": "string", "int": "integer", "float": "float", "bool": "boolean"}.get(t, t)
         elif funcName == "int":
             return int(args[0]) if args else 0
@@ -274,6 +315,39 @@ def evaluateExpression(tokens: list, env: dict):
             return str(args[0]) if args else ""
         elif funcName == "float":
             return float(args[0]) if args else 0.0
+        elif funcName == "reverse":
+            val = str(args[0]) if args else ""
+            return val[::-1]
+
+    resolved_tokens = []
+    i = 0
+    while i < len(tokens):
+        if i + 2 < len(tokens) and tokens[i + 1] == "[" and tokens[i] in env:
+            varName = tokens[i]
+            bracket_depth = 0
+            end_idx = i + 1
+            while end_idx < len(tokens):
+                if tokens[end_idx] == "[":
+                    bracket_depth += 1
+                elif tokens[end_idx] == "]":
+                    bracket_depth -= 1
+                    if bracket_depth == 0:
+                        break
+                end_idx += 1
+            
+            if bracket_depth == 0:
+                indexTokens = tokens[i + 2:end_idx]
+                idx = int(evaluateExpression(indexTokens, env))
+                
+                val = env[varName]
+                resolved_tokens.append(repr(val[idx]))
+                i = end_idx + 1
+                continue
+        
+        resolved_tokens.append(tokens[i])
+        i += 1
+        
+    tokens = resolved_tokens
 
     if len(tokens) >= 3 and tokens[0] in env and isinstance(env[tokens[0]], dict) and env[tokens[0]]["type"] == "function":
         funcName = tokens[0]
@@ -355,3 +429,8 @@ def parseCallArgs(tokens: list, env: dict):
     except ValueError:
         pass
     return callArgs
+
+def tokeniseLine(line: str):
+        pattern = r'''("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|==|!=|<=|>=|[(),\[\]{}+*\/\-%<>=]|[^\s(),\[\]{}+*\/\-%<>=]+)'''
+        return [t for t in re.findall(pattern, line) if t.strip()]
+    
