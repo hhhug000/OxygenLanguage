@@ -158,7 +158,7 @@
         // Initialize Monaco Editor instance once modules are loaded
         require(['vs/editor/editor.main'], function () {
             editor = monaco.editor.create(document.getElementById('editor-container'), {
-                value: 'name = "Hugo"\nprint("Hello, what is your name?")\nname[2] = "a"\nprint("Modified name:", name)',
+                value: 'def sayhi()\n   print("Hello, World!")\nend\n\nsayhi()',
                 language: 'python',
                 theme: 'vs-dark',
                 automaticLayout: true,
@@ -188,23 +188,23 @@
                 pyodide.FS.writeFile("/src/main.py", mainCode);
                 pyodide.FS.writeFile("/src/runner.py", runnerCode);
 
-                // Expose JS functions to Python for stdio and input redirection
-                pyodide.globals.set("js_print", (msg) => {
+                // Expose JS functions globally for Pyodide access
+                window.js_print = (msg) => {
                     logToTerminal(msg);
-                });
+                };
 
-                pyodide.globals.set("js_input", (promptText) => {
+                window.js_input = (promptText) => {
                     return prompt(promptText || "") || "";
-                });
+                };
 
                 await pyodide.runPythonAsync(`
                     import sys
-                    from js import js_print, js_input
+                    import js
 
                     class TerminalStdout:
                         def write(self, text):
                             if text and text != '\\n':
-                                js_print(text)
+                                js.js_print(text)
                         def flush(self):
                             pass
 
