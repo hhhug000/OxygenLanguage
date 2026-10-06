@@ -3,7 +3,7 @@ def runLine(line, context, index):
 
     if cmd == "print":
         args = getArgsFromBrackets(line)
-        print(args)
+        print(*args)
         return 1
     elif cmd == "def":
         print(f"Defining function: {line[1]}")
