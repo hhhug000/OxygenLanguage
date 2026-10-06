@@ -1,3 +1,7 @@
+class ReturnException(Exception):
+    def __init__(self, value):
+        self.value = value
+
 def runLine(line, context, index, env):
     if not line:
         return 1
@@ -99,6 +103,10 @@ def runLine(line, context, index, env):
     
     elif cmd == "end":
         return 1
+    elif cmd == "return":
+        retTokens = line[1:]
+        val = evaluateExpression(retTokens, env)
+        raise ReturnException(val)
     else:
         evaluateExpression(line, env)
         return 1
@@ -176,20 +184,11 @@ def evaluateExpression(tokens: list, env: dict):
         for paramName, argVal in zip(funcDef["args"], callArgs):
             localEnv[paramName] = argVal
             
-        result = None
-        i = funcDef["startIndex"]
-        while i < funcDef["endIndex"]:
-            currLine = funcDef["context"][i]
-            if currLine:
-                if currLine[0] == "return":
-                    retTokens = currLine[1:]
-                    result = evaluateExpression(retTokens, localEnv)
-                    break
-                res = runLine(currLine, funcDef["context"], i, localEnv)
-                i += res if res is not None else 1
-            else:
-                i += 1
-        return result
+        try:
+            executeBlock(funcDef["context"], funcDef["startIndex"], funcDef["endIndex"], localEnv)
+        except ReturnException as e:
+            return e.value
+        return None
     
     exprParts = []
     operators = {"+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=", "and", "or", "not", "(", ")"}

@@ -22,9 +22,9 @@ while counter < 3 do
 end
 
 def sayhi(name)
-    print("Hello", name)
+    return "Hello " + name
 end
 
-sayhi("Oxygen")
+print(sayhi("Oxygen"))
 
 print("=== All Tests Completed Successfully! ===")
