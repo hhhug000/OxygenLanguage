@@ -1,0 +1,81 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Oxygen",
+    "scopeName": "source.oxy",
+    "fileTypes": [
+        "oxy"
+    ],
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#constants"
+        },
+        {
+            "include": "#functions"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.number-sign.oxy",
+                    "match": "#.*$"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.oxy",
+                    "begin": "\"",
+                    "end": "\""
+                },
+                {
+                    "name": "string.quoted.single.oxy",
+                    "begin": "'",
+                    "end": "'"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.oxy",
+                    "match": "\\b(if|then|else|elif|while|for|do|end|return|break|continue|def)\\b"
+                },
+                {
+                    "name": "keyword.operator.logical.oxy",
+                    "match": "\\b(and|or|not)\\b"
+                }
+            ]
+        },
+        "constants": {
+            "patterns": [
+                {
+                    "name": "constant.language.boolean.oxy",
+                    "match": "\\b(true|false|nil|null)\\b"
+                },
+                {
+                    "name": "constant.numeric.oxy",
+                    "match": "\\b\\d+(\\\\.\\d+)?\\b"
+                }
+            ]
+        },
+        "functions": {
+            "patterns": [
+                {
+                    "name": "support.function.builtin.oxy",
+                    "match": "\\b(print|input|len|type|int|str|float)\\b"
+                }
+            ]
+        }
+    }
+}
