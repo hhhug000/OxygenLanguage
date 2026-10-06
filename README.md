@@ -3,6 +3,9 @@
 Oxygen is a custom interpreted programming language built from scratch in Python.
 This repo includes the language, an online playground powered with Pyodide, and a VSCode syntax highlighting extension.
 
+## Why did I make Oxygen?
+Oxygen was originally made for the Hack Club Crescent competition (Week 2, Language card)
+
 ## Running Oxygen code
 
 To run oxygen code run the main.py file with the file as the first argument, or just main.py for the REPL
@@ -19,6 +22,8 @@ main.py fizzbuzz.oxy
 main.py
 ```
 
+The REPL fully supports the language, including code blocks
+
 ## How to write in Oxygen?
 
 ### Variables & Data Types
@@ -27,7 +32,7 @@ Variables are declared by assigning a value. Strings, numbers, and booleans are 
 
 ```
 name = "Hugo"
-age = 18
+age = 15
 isAwesome = true
 ```
 
