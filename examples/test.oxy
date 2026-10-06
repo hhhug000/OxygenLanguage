@@ -1,5 +1,5 @@
 print("=== Test 1: Variables & Math ===")
-x = 10
+x = 10# Set x to 10
 y = 5
 result = x + y * 2
 print("x is", x)

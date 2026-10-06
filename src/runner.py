@@ -4,6 +4,8 @@ def runLine(line, context, index, env):
     
     cmd = line[0]
 
+    line = removeComments(line)
+
     if len(line) >= 3 and line[1] == "=":
         varName = line[0]
         rhsTokens = line[2:]
@@ -152,3 +154,15 @@ def executeBlock(context: list, startIndex: int, endIndex: int, env: dict):
                 i += 1
         else:
             i += 1
+
+def removeComments(tokens):
+    for index, token in enumerate(tokens):
+        if "#" in token:
+            cleanedToken = token.split("#", 1)[0]
+            
+            if cleanedToken == "":
+                return tokens[:index]
+            
+            return tokens[:index] + [cleanedToken]
+            
+    return tokens
