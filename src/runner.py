@@ -1,6 +1,7 @@
 import os
 import re
 
+# Exceptions so they can be detected and handled for loops and stuff
 class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
@@ -11,14 +12,18 @@ class BreakException(Exception):
 class ContinueException(Exception):
     pass
 
+# Run a single line of code, takes in context for code blocks and env for vars and all that
 def runLine(line, context, index, env):
     if not line:
         return 1
-    
+
+    # get the command
+    # command is the first token
     cmd = line[0]
 
     line = removeComments(line)
 
+    # variable assignment, check if its a list or string index assignment
     if "=" in line:
         equalsIdx = line.index("=")
         leftSide = line[:equalsIdx]
@@ -26,6 +31,8 @@ def runLine(line, context, index, env):
             varName = leftSide[0]
             indexTokens = leftSide[2:-1]
             idx = int(evaluateExpression(indexTokens, env))
+            # remember rhs is right hand side
+            # so everything after equals
             rhsTokens = line[equalsIdx + 1:]
             val = evaluateExpression(rhsTokens, env)
             if varName in env:
@@ -38,19 +45,25 @@ def runLine(line, context, index, env):
                     current_val[idx] = val
             return 1
 
+    # variable assignment, check if its a list or string index assignment
     if len(line) >= 3 and line[1] == "=":
         varName = line[0]
         rhsTokens = line[2:]
         env[varName] = evaluateExpression(rhsTokens, env)
         return 1
 
+    # All the commands (not vars and stuff)
+
+    # print to console
     if cmd == "print":
         args = getArgsFromBrackets(line, env)
         print(*args)
         return 1
+    # define a function, stored in env
     elif cmd == "def":
         funcName = line[1]
 
+        # get the argument names, they are between brackets
         argTokens = []
         try:
             openBracket = line.index("(")
@@ -61,6 +74,7 @@ def runLine(line, context, index, env):
 
         argNames = [token for token in argTokens if token != ","]
 
+        # find the end of the function
         endIndex = index
         depth = 1
         while endIndex < len(context) - 1:
@@ -73,6 +87,7 @@ def runLine(line, context, index, env):
                     if depth == 0:
                         break
 
+        # add to env
         env[funcName] = {
             "type": "function",
             "args": argNames,
@@ -83,17 +98,23 @@ def runLine(line, context, index, env):
 
         return (endIndex - index) + 1
 
+    # if statements
+    # handled together with elif and else so they are in one block
     elif cmd == "if":
+        # branches is a list of dicts with cond, start and end
         branches = []
-        
+
+        # get if statement condition
         try:
             thenIndex = line.index("then")
             currentCond = line[1:thenIndex]
         except ValueError:
             currentCond = line[1:]
-            
+
+        # find the end of the if statement and all elif and else branches
         branchStart = index + 1
-        
+
+        # loop through the context to find the end of the if statement and all elif and else branches
         i = index + 1
         depth = 1
         while i < len(context):
@@ -112,6 +133,7 @@ def runLine(line, context, index, env):
                         break
                     else:
                         depth -= 1
+                # create new branches for elif and else
                 elif depth == 1 and c in ("elif", "else"):
                     branches.append({
                         "cond": currentCond,
@@ -129,6 +151,7 @@ def runLine(line, context, index, env):
                     branchStart = i + 1
             i += 1
 
+        # execute first branch thats true
         for b in branches:
             cond = b["cond"]
             if cond is None:
@@ -140,12 +163,15 @@ def runLine(line, context, index, env):
                     break
 
         return (i - index) + 1
-    
+
+    # while loops
     elif cmd == "while":
+        # get all condition tokens, between command and do
         condTokens = line[1 : line.index("do")] if "do" in line else line[1:]
-        
+
         endIndex = index
         depth = 1
+        # find end of while to loop it
         while endIndex < len(context) - 1:
             endIndex += 1
             if context[endIndex]:
@@ -156,6 +182,7 @@ def runLine(line, context, index, env):
                     if depth == 0:
                         break
 
+        # eval expression
         while bool(evaluateExpression(condTokens, env)):
             i = index + 1
             try:
@@ -166,23 +193,30 @@ def runLine(line, context, index, env):
                         i += res if res is not None else 1
                     else:
                         i += 1
+            # super cool exception method to catch and handle continue and break
             except ContinueException:
                 continue
             except BreakException:
                 break
 
         return (endIndex - index) + 1
+
+    # for looks, with a variable name, start and end values
     elif cmd == "for":
+        # get the variable name, start and end values
         varName = line[1]
         equalsIdx = line.index("=")
         toIdx = line.index("to")
         doIdx = line.index("do")
-        
+
+        # eval start and end vals
         startVal = int(evaluateExpression(line[equalsIdx + 1:toIdx], env))
         endVal = int(evaluateExpression(line[toIdx + 1:doIdx], env))
-        
+
+        # find the end of the for loop to loop it
         endIndex = index
         depth = 1
+        # loop through the context to find the end of the for loop
         while endIndex < len(context) - 1:
             endIndex += 1
             if context[endIndex]:
@@ -192,7 +226,8 @@ def runLine(line, context, index, env):
                     depth -= 1
                     if depth == 0:
                         break
-                      
+
+        # loop through and execute
         currentVal = startVal
         while currentVal <= endVal:
             env[varName] = currentVal
@@ -206,6 +241,8 @@ def runLine(line, context, index, env):
                         i += res if res is not None else 1
                     else:
                         i += 1
+            # here is the super cool exception method again
+            # super cool way to detect it
             except ContinueException:
                 pass
             except BreakException:
@@ -214,21 +251,31 @@ def runLine(line, context, index, env):
             currentVal += 1
             
         return (endIndex - index) + 1
-    
+
+    # end of blocks, like if while for and def
     elif cmd == "end":
+        # ready to skip
         return 1
+    # return statement raises super cool exception
     elif cmd == "return":
         retTokens = line[1:]
+        # eval return val
         val = evaluateExpression(retTokens, env)
         raise ReturnException(val)
+    # another awesome break exception
     elif cmd == "break":
         raise BreakException()
+    # same for continue
     elif cmd == "continue":
         raise ContinueException()
+    # include files inside other files
     elif cmd == "include":
+        # get the current file, so its relative to the file
+        # otherwise it breaks when executed in different shell dirs
         filenames = parseCallArgs(line, env)
         currentDir = env.get("__dir__", os.getcwd())
-        
+
+        # loop through the filenames and include them        
         for rawFilename in filenames:
             filename = str(rawFilename).strip('"\'')
             if not filename.endswith(".oxy"):
@@ -237,6 +284,7 @@ def runLine(line, context, index, env):
             fullPath = os.path.join(currentDir, filename)
             
             try:
+                # read file
                 with open(fullPath, "r") as f:
                     fileCode = f.read()
                 
@@ -253,7 +301,8 @@ def runLine(line, context, index, env):
                         i += res if res is not None else 1
                     else:
                         i += 1
-                        
+
+                # restore the old dir after including
                 if oldDir is not None:
                     env["__dir__"] = oldDir
                 else:
@@ -269,9 +318,11 @@ def runLine(line, context, index, env):
         evaluateExpression(line, env)
         return 1
 
+# parse val into a sting, int, float, bool or None
 def parseValue(token: str, env: dict = None):
     token = token.strip()
 
+    # check if its a string, boolean or null
     if (token.startswith('"') and token.endswith('"')) or (token.startswith("'") and token.endswith("'")):
         return token[1:-1]
 
@@ -295,12 +346,16 @@ def parseValue(token: str, env: dict = None):
 
     return token
 
+# get the arguments from brackets, for function calls
 def getArgsFromBrackets(line: list, env: dict):
+    # check if the line has brackets and is a function call
     if len(line) >= 3 and line[1] == "(" and line[-1] == ")":
         innerTokens = line[2:-1]
         args = []
         currentArg = []
 
+        # loop through the inner tokens and split them by commas
+        # also eval each arg
         for token in innerTokens:
             if token == ",":
                 if currentArg:
@@ -315,7 +370,9 @@ def getArgsFromBrackets(line: list, env: dict):
         return args
     return []
 
+# eval expressions, takes list of tokens and env for vars and funcs
 def evaluateExpression(tokens: list, env: dict):
+    # check if its a function call, like input() or len() or type() or int() or str() or float() or reverse()
     if len(tokens) >= 3 and tokens[0] in ("input", "len", "type", "int", "str", "float", "reverse"):
         funcName = tokens[0]
         args = parseCallArgs(tokens, env)
@@ -338,6 +395,8 @@ def evaluateExpression(tokens: list, env: dict):
             val = str(args[0]) if args else ""
             return val[::-1]
 
+    # this part is partially vibecoded slop, but it works well enough
+    # check if its a list or string index access, like myList[0] or myString[1]
     resolved_tokens = []
     i = 0
     while i < len(tokens):
@@ -368,6 +427,7 @@ def evaluateExpression(tokens: list, env: dict):
         
     tokens = resolved_tokens
 
+    # check if its a func call
     if len(tokens) >= 3 and tokens[0] in env and isinstance(env[tokens[0]], dict) and env[tokens[0]]["type"] == "function":
         funcName = tokens[0]
         funcDef = env[funcName]
@@ -383,7 +443,9 @@ def evaluateExpression(tokens: list, env: dict):
         except ReturnException as e:
             return e.value
         return None
-    
+
+    # maths evals using python eval
+    # also parses tokens
     exprParts = []
     operators = {"+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=", "and", "or", "not", "(", ")"}
     for token in tokens:
@@ -404,6 +466,7 @@ def evaluateExpression(tokens: list, env: dict):
     except Exception:
         return exprStr
 
+# run a code block, like if, while, for, def, etc
 def executeBlock(context: list, startIndex: int, endIndex: int, env: dict):
     i = startIndex
     while i < endIndex:
@@ -417,6 +480,7 @@ def executeBlock(context: list, startIndex: int, endIndex: int, env: dict):
         else:
             i += 1
 
+# helper func to remove comments from lines
 def removeComments(tokens):
     for index, token in enumerate(tokens):
         if "#" in token:
@@ -429,6 +493,7 @@ def removeComments(tokens):
             
     return tokens
 
+# helper func to tokenise a line of code into tokens
 def parseCallArgs(tokens: list, env: dict):
     callArgs = []
     try:
@@ -450,6 +515,8 @@ def parseCallArgs(tokens: list, env: dict):
     return callArgs
 
 def tokeniseLine(line: str):
+        # horrible regex aaaaaahhhhhhhhh
+        # also claude
         pattern = r'''("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|==|!=|<=|>=|[(),\[\]{}+*\/\-%<>=]|[^\s(),\[\]{}+*\/\-%<>=]+)'''
         return [t for t in re.findall(pattern, line) if t.strip()]
     
